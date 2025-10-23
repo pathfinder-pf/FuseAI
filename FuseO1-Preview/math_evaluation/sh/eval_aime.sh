@@ -1,5 +1,5 @@
 set -ex
-proj_dir="<PROJECT_DIR>"
+proj_dir="/home/gcpuser/sky_workdir/FuseAI/FuseO1-Preview/math_evaluation"
 PROMPT_TYPE=$1
 MODEL_NAME_OR_PATH=$2
 OUTPUT_DIR=$3

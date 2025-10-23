@@ -110,20 +110,30 @@ def prepare_data(data_name, args):
 
 def setup(args):
     # load model
-    available_gpus = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+    #available_gpus = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
     if args.use_vllm:
-        engine = Engine(
-            model_path=args.model_name_or_path,
+        llm = Engine(
+            model_path = args.model_name_or_path,
             context_length=args.max_model_len,
-            precomplie_bs_paddings = [1, 64],
-            precomplie_token_paddings = [8192],
-            disable_jax_precompile=True,
+            nnodes = 1,
+            random_seed = 3,
+            node_rank = 0,
+            chunked_prefill_size = 8192,
+            dtype = 'bfloat16',
+            max_running_requests = 64,
+            max_total_tokens = 257536,
+            attention_backend = 'fa',
+            page_size = 64,
+            skip_server_warmup = True,
+            precompile_bs_paddings = [1, 32, 64],
+            precompile_token_paddings = [8192],
+            log_level = "info",
             # enforce_eager=True,
             # swap_space=8,
-            mem_fraction_static=0.90,
+            mem_fraction_static = 0.90,
             tp_size = 2,
-            disable_overlap_schedule=True,
-            trust_remote_code=True,
+            disable_overlap_schedule = True,
+            trust_remote_code = True,
         )
         tokenizer = None
         if args.apply_chat_template:
@@ -303,11 +313,11 @@ def main(llm, tokenizer, data_name, args):
                 prompts,
                 sampling_params = sampling_params,
             )
-            print(f"prompt_ids example:{outputs[0].prompt_token_ids}")
+            #print(f"prompt_ids example:{outputs[0].prompt_token_ids}")
 
-            outputs = sorted(
-                outputs, key=lambda x: int(x.request_id)
-            )  # sort outputs by request_id
+            #outputs = sorted(
+            #    outputs, key=lambda x: int(x.request_id)
+            #)  # sort outputs by request_id
             outputs = [output["text"]for output in outputs]
         else:
             outputs = generate_completions(
