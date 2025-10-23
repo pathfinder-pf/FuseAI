@@ -114,7 +114,7 @@ def setup(args):
     if args.use_vllm:
         llm = Engine(
             model_path = args.model_name_or_path,
-            context_length=args.max_model_len,
+            #context_length=args.max_model_len,
             nnodes = 1,
             random_seed = 3,
             node_rank = 0,
