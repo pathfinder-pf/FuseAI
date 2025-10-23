@@ -116,7 +116,7 @@ def setup(args):
             model_path = args.model_name_or_path,
             #context_length=args.max_model_len,
             nnodes = 1,
-            random_seed = 3,
+            random_seed = args.seed,
             node_rank = 0,
             chunked_prefill_size = 8192,
             dtype = 'bfloat16',
