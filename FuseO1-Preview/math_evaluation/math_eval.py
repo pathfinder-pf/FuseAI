@@ -2,7 +2,7 @@ import random
 import os
 import argparse
 import time
-from vllm import LLM, SamplingParams
+from sgl_jax.srt.entrypoints.engine import Engine
 from datetime import datetime
 from tqdm import tqdm
 
@@ -112,15 +112,17 @@ def setup(args):
     # load model
     available_gpus = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
     if args.use_vllm:
-        llm = LLM(
-            model=args.model_name_or_path,
-            max_model_len=args.max_model_len,
-            enforce_eager=True,
+        engine = Engine(
+            model_path=args.model_name_or_path,
+            context_length=args.max_model_len,
+            precomplie_bs_paddings = [1, 64],
+            precomplie_token_paddings = [8192],
+            disable_jax_precompile=True,
+            # enforce_eager=True,
             # swap_space=8,
-            gpu_memory_utilization=0.90,
-            disable_custom_all_reduce=True if len(available_gpus) > 1 else False,
-            tensor_parallel_size=len(available_gpus) // args.pipeline_parallel_size,
-            pipeline_parallel_size=args.pipeline_parallel_size,
+            mem_fraction_static=0.90,
+            tp_size = 2,
+            disable_overlap_schedule=True,
             trust_remote_code=True,
         )
         tokenizer = None
@@ -286,24 +288,27 @@ def main(llm, tokenizer, data_name, args):
         # get all outputs
         prompts = [item[1] for item in current_prompts]
         if args.use_vllm:
+            sampling_params = []
+            for p in  prompts:
+                sampling_params.append({
+                    "temperature" : args.temperature,
+                    "top_p": args.top_p,
+                    "max_new_tokens" : args.max_tokens_per_call,
+                    "n": 1,
+                    "stop": stop_words,
+                    "stop_token_ids" : stop_token_ids,
+                    "sampling_seed": args.seed,
+                })
             outputs = llm.generate(
                 prompts,
-                SamplingParams(
-                    temperature=args.temperature,
-                    top_p=args.top_p,
-                    max_tokens=args.max_tokens_per_call,
-                    n=1,
-                    stop=stop_words,
-                    stop_token_ids=stop_token_ids,
-                    seed=args.seed
-                ),
+                sampling_params = sampling_params,
             )
             print(f"prompt_ids example:{outputs[0].prompt_token_ids}")
 
             outputs = sorted(
                 outputs, key=lambda x: int(x.request_id)
             )  # sort outputs by request_id
-            outputs = [output.outputs[0].text for output in outputs]
+            outputs = [output["text"]for output in outputs]
         else:
             outputs = generate_completions(
                 model=llm,
